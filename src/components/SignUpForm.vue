@@ -1,100 +1,101 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import InputText from './InputText.vue';
+import { useFormValidation } from '@/composables/useFormValidation';
+import { VALIDATION_MESSAGES, VALIDATION_PATTERNS } from '@/constants/validation';
 
-const userId = ref('');
-const name = ref('');
-const organization = ref('');
+type FieldName = 'userId' | 'name' | 'organization';
 
-const userIdDirty = ref(false);
-const nameDirty = ref(false);
-const organizationDirty = ref(false);
+interface FormData {
+  userId: string;
+  name: string;
+  organization: string;
+}
 
-const handleUserIdInput = () => {
-  userIdDirty.value = true;
+const FORM_FIELDS: Record<
+  FieldName,
+  {
+    label: string;
+    optional?: boolean;
+  }
+> = {
+  userId: { label: 'User ID' },
+  name: { label: 'Name' },
+  organization: { label: 'Organization', optional: true },
 };
 
-const handleNameInput = () => {
-  nameDirty.value = true;
-};
-
-const handleOrganizationInput = () => {
-  organizationDirty.value = true;
-};
-
-const isValidUserId = computed(() => {
-  if (!userId.value) return false;
-  return /^[a-zA-Z0-9]+$/.test(userId.value);
+const formData = ref<FormData>({
+  userId: '',
+  name: '',
+  organization: '',
 });
 
-const isValidName = computed(() => {
-  if (!name.value) return false;
-  return !/[\\/:*?"<>|]/.test(name.value);
+const dirtyFields = ref<Record<FieldName, boolean>>({
+  userId: false,
+  name: false,
+  organization: false,
 });
 
-const isValidOrganization = computed(() => {
-  return !/[\\/:*?"<>|]/.test(organization.value);
-});
+const { isValidUserId, isValidName, isValidOrganization, isFormValid } = useFormValidation(formData);
 
-const isFormValid = computed(() => {
-  return isValidUserId.value && isValidName.value && isValidOrganization.value;
-});
+const getValidationState = computed(() => ({
+  userId: isValidUserId.value,
+  name: isValidName.value,
+  organization: isValidOrganization.value,
+}));
 
-const userIdError = computed(() => {
-  if (!userIdDirty.value) return '';
-  if (!userId.value) return 'ID를 입력해주세요';
-  if (!isValidUserId.value) return '알파벳과 숫자만 사용 가능합니다';
-  return '';
-});
+const getFieldError = (field: FieldName): string => {
+  if (!dirtyFields.value[field]) return '';
 
-const nameError = computed(() => {
-  if (!nameDirty.value) return '';
-  if (!name.value) return '이름을 입력해주세요';
-  if (!isValidName.value) return '특수문자 \\ / : * ? " < > | 는 사용할 수 없습니다';
-  return '';
-});
+  const value = formData.value[field];
+  const { optional } = FORM_FIELDS[field];
 
-const organizationError = computed(() => {
-  if (!organizationDirty.value) return '';
-  if (!organization.value) return false;
-  if (!isValidOrganization.value) return '특수문자 \\ / : * ? " < > | 는 사용할 수 없습니다';
-  return '';
-});
-
-const handleSubmit = () => {
-  userIdDirty.value = true;
-  nameDirty.value = true;
-  organizationDirty.value = true;
-
-  if (!isFormValid.value) {
-    return;
+  if (!optional && !value) {
+    return VALIDATION_MESSAGES[field].required;
   }
 
-  alert(`User ID: ${userId.value}\nName: ${name.value}\nOrganization: ${organization.value}`);
+  if (value && !VALIDATION_PATTERNS[field].test(value)) {
+    return VALIDATION_MESSAGES[field].pattern;
+  }
+
+  return '';
+};
+
+const handleFieldChange = (field: FieldName) => {
+  dirtyFields.value[field] = true;
+};
+
+const handleSubmit = () => {
+  Object.keys(dirtyFields.value).forEach((field) => {
+    dirtyFields.value[field as FieldName] = true;
+  });
+
+  if (!isFormValid.value) return;
+
+  const formDataString = Object.entries(formData.value)
+    .map(([key, value]) => `${key}: ${value}`)
+    .join('\n');
+
+  alert(formDataString);
 };
 </script>
 
 <template>
-  <form class="flex flex-col gap-4 py-4" @submit.prevent="handleSubmit">
+  <form @submit.prevent="handleSubmit" class="flex flex-col gap-4 py-4">
     <InputText
-      label="User ID"
-      v-model="userId"
-      :error="userIdError"
-      :is-valid="isValidUserId"
-      @input="handleUserIdInput"
+      v-for="(field, key) in FORM_FIELDS"
+      :key="key"
+      :label="field.label"
+      v-model="formData[key as FieldName]"
+      :error="getFieldError(key as FieldName)"
+      :is-valid="getValidationState[key as FieldName]"
+      @input="() => handleFieldChange(key as FieldName)"
     />
-    <InputText label="Name" v-model="name" :error="nameError" :is-valid="isValidName" @input="handleNameInput" />
-    <InputText
-      label="Organization"
-      v-model="organization"
-      :error="organizationError"
-      :is-valid="isValidOrganization"
-      :optional="true"
-      @input="handleOrganizationInput"
-    />
+
     <button
-      class="bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+      type="submit"
       :disabled="!isFormValid"
+      class="bg-blue-500 text-white px-4 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
     >
       Submit
     </button>
