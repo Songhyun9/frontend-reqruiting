@@ -3,11 +3,13 @@ import { ref } from 'vue';
 
 type InputTextProps = {
   label: string;
+  error?: string;
+  isValid?: boolean;
+  optional?: boolean;
 };
 
 const model = defineModel<string>();
 defineProps<InputTextProps>();
-
 const inputRef = ref<HTMLInputElement | null>(null);
 
 const handleClear = () => {
@@ -17,12 +19,17 @@ const handleClear = () => {
 </script>
 
 <template>
-  <label class="flex flex-col gap-4">
+  <label class="flex flex-col gap-2">
     {{ label }}
     <div class="relative">
       <input
         ref="inputRef"
-        class="w-full border-gray-400 border rounded-md h-10 px-4 hover:border-blue-400 invalid:border-red-500 focus:border-green-400 focus:outline-none"
+        class="w-full border rounded-md h-10 px-4 hover:border-blue-400 focus:outline-none transition-colors"
+        :class="{
+          'border-red-500': error,
+          'border-green-500': !error && isValid && model,
+          'border-gray-400': !error && (!isValid || !model),
+        }"
         type="text"
         autocomplete="off"
         v-model="model"
@@ -36,5 +43,6 @@ const handleClear = () => {
         ✕
       </button>
     </div>
+    <span v-if="error" class="text-sm text-red-500">{{ error }}</span>
   </label>
 </template>
