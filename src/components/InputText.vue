@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 
-type InputTextProps = {
+interface InputTextProps {
   label: string;
-};
-
-const model = defineModel<string>();
+  error?: string;
+  isValid?: boolean;
+}
 defineProps<InputTextProps>();
-
+const model = defineModel<string>();
 const inputRef = ref<HTMLInputElement | null>(null);
 
 const handleClear = () => {
@@ -17,24 +17,35 @@ const handleClear = () => {
 </script>
 
 <template>
-  <label class="flex flex-col gap-4">
+  <label class="flex flex-col gap-2">
     {{ label }}
     <div class="relative">
       <input
         ref="inputRef"
-        class="w-full border-gray-400 border rounded-md h-10 px-4 hover:border-blue-400 invalid:border-red-500 focus:border-green-400 focus:outline-none"
+        v-model="model"
         type="text"
         autocomplete="off"
-        v-model="model"
+        :class="[
+          'w-full border rounded-md h-10 px-4 transition-colors',
+          'hover:border-blue-400 focus:outline-none',
+          {
+            'border-red-500': !!error,
+            'border-green-500': !error && isValid && model,
+            'border-gray-400': !error && (!isValid || !model),
+          },
+        ]"
       />
       <button
         v-if="model"
         type="button"
-        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
         @click="handleClear"
+        class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
       >
         ✕
       </button>
     </div>
+    <span v-if="error" class="text-sm text-red-500">
+      {{ error }}
+    </span>
   </label>
 </template>
